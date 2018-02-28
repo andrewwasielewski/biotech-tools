@@ -1,5 +1,5 @@
 import cv2
-import numpy
+import numpy as np
 import glob
 import os
 import sys
@@ -24,14 +24,17 @@ options = {}
 options['title'] = 'Select directory containing microplate images'
 file_path = filedialog.askdirectory(**options)
 
-ext = ".nd2"
+ext = ".jpg"
 pathname = os.path.join(file_path, "*" + ext)
-images = [nd2reader.Nd2(img) for img in glob.glob(pathname)]
+
+#we assume all images are the same size, gets first wildcard match
+tmpImg = cv2.imread(glob.glob(pathname)[0])
+imgWidth = tmpImg.shape[0]
+imgHeight = tmpImg.shape[1]
 
 image_names = list()
 for img in glob.glob(pathname):
 	image_names.append(img[(len(file_path)+1):-len(ext)])
-
 min_x, max_x = getCol(image_names[0]), getCol(image_names[0])
 min_y, max_y = getRow(image_names[0]), getRow(image_names[0])
 
@@ -45,28 +48,26 @@ for curImg in image_names:
     if getCol(curImg) > max_x:
         max_x = getCol(curImg)
 
-print(min_y,' ', max_y)
-print(min_x,' ', max_x)
+height = imgHeight * (max_y + 1 - min_y)
+width = imgWidth * (max_x + 1- min_x)
+output = np.zeros((width, height, 3))
 
-height = images[0].height * (max_y - min_y)
-width = images[0].width * (max_x - min_x)
+print('single image height: ', imgHeight)
+print('single image width: ', imgWidth)
+print('output file shape: ', output.shape)
 
-output = numpy.zeros((height,width,3))
-
-print('height: ', height)
-print('width: ', width)
-print('output: ', output.shape)
-
-
-print(images[0].frames)
 for y in range(min_y, max_y+1):
     for x in range(min_x, max_x+1):
-        if os.path.isfile(os.path.join(file_path, getImageName(x, y) + ext)):
-            print("T")
+        imgPath = os.path.join(file_path, getImageName(x, y) + ext)
+        if os.path.isfile(imgPath):
+            writeImg = cv2.imread(imgPath)
+            y_pos = (y - min_y) * imgHeight
+            x_pos = (x - min_x) * imgWidth
+            # print('y: ',y,'    ', y_pos, '-', y_pos+imgHeight)
+            # print('x: ',x,'    ', x_pos, '-', x_pos+imgWidth)
+            output[x_pos:x_pos+imgWidth, y_pos:y_pos+imgHeight] = writeImg
 
-# for image in images:
-#     h,w,d = image.shape
-#     output[y:y+h,0:w] = image
-#     y += h
+outFilePath = os.path.join(file_path,'../stitched_microplate.jpg')
+cv2.imwrite(outFilePath, output)
+print('created new file: ', outFilePath)
 
-# # cv2.imwrite("test.jpg", output)
