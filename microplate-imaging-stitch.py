@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import filedialog
 import nd2reader
 
+
+#this is a quick demo
 def getRow(imgName):
     return ord(imgName[:-1])-ord('A')
 
